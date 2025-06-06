@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบ Workflow การขนส่ง</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Sarabun', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f6fa;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        
+        .status-bar {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .status-bar h3 {
+            margin: 0 0 20px 0;
+            color: #2c3e50;
+            font-size: 20px;
+        }
+        
+        .steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+        
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            height: 2px;
+            background: #ecf0f1;
+            z-index: 1;
+        }
+        
+        .step {
+            text-align: center;
+            flex: 1;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .step.completed .step-circle { 
+            background: #27ae60; 
+            box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.3);
+        }
+        .step.current .step-circle { 
+            background: #3498db; 
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+            animation: pulse 2s infinite;
+        }
+        .step.pending .step-circle { 
+            background: #bdc3c7; 
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3); }
+            50% { box-shadow: 0 0 0 8px rgba(52, 152, 219, 0.1); }
+            100% { box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3); }
+        }
+        
+        .step-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 25px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 0 8px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover { 
+            background: #2980b9; 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn.reset { background: #e74c3c; }
+        .btn.reset:hover { 
+            background: #c0392b;
+            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+        }
+        
+        .btn.success { background: #27ae60; }
+        .btn.success:hover { 
+            background: #229954;
+            box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+        }
+        
+        .btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .form-container {
+            background: white;
+            padding: 35px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+        
+        .form-step h2 {
+            color: #2c3e50;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .form-step p {
+            color: #7f8c8d;
+            margin: 0 0 25px 0;
+            font-size: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        input:invalid {
+            border-color: #e74c3c;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .form-row-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .shipping-calculator {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+        
+        .shipping-result {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-weight: bold;
+            color: #27ae60;
+        }
+        
+        .shipping-result.paid {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        @media (max-width: 768px) {
+            .form-row, .form-row-3 {
+                grid-template-columns: 1fr;
+            }
+            
+            .steps {
+                flex-wrap: wrap;
+                gap: 15px;
+            }
+            
+            .step {
+                flex-basis: calc(50% - 10px);
+            }
+        }
+        
+        .message {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.success {
+            background: #d5f4e6;
+            color: #27ae60;
+            border-left: 4px solid #27ae60;
+        }
+        
+        .message.error {
+            background: #fadbd8;
+            color: #e74c3c;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        .message.info {
+            background: #d6eaf8;
+            color: #3498db;
+            border-left: 4px solid #3498db;
+        }
+        
+        .hidden { 
+            display: none !important; 
+        }
+        
+        .summary {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 25px;
+        }
+        
+        .summary-item {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .summary-item h4 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        
+        .summary-item p {
+            margin: 8px 0;
+            color: #5a6c7d;
+        }
+        
+        .current-info {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-left: 15px;
+            padding: 8px 15px;
+            background: #ecf0f1;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        
+        .data-count {
+            background: #3498db;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            display: inline-block;
+            margin-left: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚛 ระบบ Workflow การขนส่ง</h1>
+            <p>ลำดับขั้นตอน: ฝ่ายขาย → ฝ่าย GR → คนขับรถ → ฝ่ายบัญชี → สรุป</p>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <h3>📊 สถานะการดำเนินงาน</h3>
+            <div class="steps">
+                <div class="step current" id="step1">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">ฝ่ายขาย</div>
+                </div>
+                <div class="step pending" id="step2">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">ฝ่าย GR</div>
+                </div>
+                <div class="step pending" id="step3">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">คนขับรถ</div>
+                </div>
+                <div class="step pending" id="step4">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">ฝ่ายบัญชี</div>
+                </div>
+                <div class="step pending" id="step5">
+                    <div class="step-circle">5</div>
+                    <div class="step-label">เสร็จสิ้น</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="btn" onclick="previousStep()">← ย้อนกลับ</button>
+            <button class="btn" onclick="nextStep()">ถัดไป →</button>
+            <button class="btn" onclick="addNewOrder()">+ เพิ่มรายการใหม่</button>
+            <button class="btn reset" onclick="resetAll()">🔄 รีเซ็ต</button>
+            <span class="current-info" id="currentInfo">ขั้นตอนปัจจุบัน: ฝ่ายขาย</span>
+            <span class="data-count" id="dataCount">รายการ: 0</span>
+        </div>
+
+        <!-- Messages -->
+        <div id="successMessage" class="message success"></div>
+        <div id="errorMessage" class="message error"></div>
+        <div id="infoMessage" class="message info"></div>
+
+        <!-- Form Container -->
+        <div class="form-container">
+            <!-- ฝ่ายขาย -->
+            <div id="form1" class="form-step">
+                <h2>💼 ขั้นตอนที่ 1: ฝ่ายขาย</h2>
+                <p>บันทึกข้อมูลลูกค้าและกำหนดค่าขนส่ง</p>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>เลขที่บิล *</label>
+                        <input type="text" id="billNumber" placeholder="เช่น 001/2568" required>
+                    </div>
+                    <div class="form-group">
+                        <label>ชื่อลูกค้า *</label>
+                        <input type="text" id="customerName" placeholder="ชื่อ-นามสกุล หรือชื่อบริษัท" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>ที่อยู่จัดส่ง *</label>
+                    <textarea id="deliveryAddress" rows="3" placeholder="บ้านเลขที่, หมู่, ตำบล, อำเภอ, จังหวัด" required></textarea>
+                </div>
+                
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label>มูลค่าการสั่งซื้อ (บาท) *</label>
+                        <input type="number" id="orderValue" placeholder="ยอดรวมในบิล" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>ประเภทสินค้าหลัก *</label>
+                        <select id="productType" required>
+                            <option value="">เลือกประเภทสินค้า</option>
+                            <option value="วัสดุทั่วไป">วัสดุทั่วไป</option>
+                            <option value="เหล็ก">เหล็ก (ไม่ส่งฟรี)</option>
+                            <option value="ปูน">ปูน (ไม่ส่งฟรี)</option>
+                            <option value="อิฐมวลเบา">อิฐมวลเบา (ไม่ส่งฟรี)</option>
+                            <option value="สี">สี</option>
+                            <option value="อุปกรณ์ไฟฟ้า">อุปกรณ์ไฟฟ้า</option>
+                            <option value="อุปกรณ์ประปา">อุปกรณ์ประปา</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>ประมาณระยะทาง (กม.) *</label>
+                        <input type="number" id="estimatedDistance" placeholder="ระยะทางจากร้าน" min="0" step="0.1" required>
+                    </div>
+                </div>
+
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label>ประเภทรถที่ใช้ *</label>
+                        <select id="vehicleType" required>
+                            <option value="">เลือกประเภทรถ</option>
+                            <option value="1.5ตัน">1.5 ตัน (กระบะ)</option>
+                            <option value="6.3ตัน">6.3 ตัน (6ล้อ)</option>
+                            <option value="14ตัน">14 ตัน (10ล้อ)</option>
+                            <option value="27ตัน">27 ตัน (รถพ่วง)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>ค่าขนส่งที่เสนอลูกค้า (บาท) *</label>
+                        <input type="number" id="quotedShippingFee" placeholder="ค่าขนส่งที่แจ้งลูกค้า" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>เหตุผลการกำหนดราคา</label>
+                        <select id="pricingReason" onchange="updatePricingNote()">
+                            <option value="">เลือกเหตุผล</option>
+                            <option value="ตามเงื่อนไขส่งฟรี">ผ่านเงื่อนไขส่งฟรี</option>
+                            <option value="ตามอัตรามาตรฐาน">คิดตามอัตรามาตรฐาน</option>
+                            <option value="ลูกค้าพิเศษ">ลูกค้าพิเศษ/VIP</option>
+                            <option value="โปรโมชั่น">โปรโมชั่นพิเศษ</option>
+                            <option value="เจรจาตกลง">เจรจาตกลงกับลูกค้า</option>
+                            <option value="อื่นๆ">อื่นๆ</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- เครื่องคำนวณค่าขนส่งแนะนำ -->
+                <div class="shipping-calculator">
+                    <h4>💡 เครื่องคำนวณค่าขนส่งตามอัตรา</h4>
+                    <div class="form-row">
+                        <div style="flex: 1;">
+                            <strong>🆓 เงื่อนไขส่งฟรี:</strong>
+                            <ul style="margin: 8px 0; padding-left: 20px; font-size: 13px;">
+                                <li>มูลค่าสินค้า ≥ 3,000 บาท</li>
+                                <li>วัสดุทั่วไป (ไม่ใช่เหล็ก/ปูน/อิฐมวลเบา)</li>
+                                <li>ระยะทาง ≤ 15 กม.</li>
+                            </ul>
+                            <div style="color: #e74c3c; font-size: 12px; margin-top: 8px;">
+                                <strong>📍 หากระยะทางเกิน 15 กม.</strong><br>
+                                จะคิดค่าขนส่งเฉพาะส่วนเกิน (ระยะทาง - 15 กม.)
+                            </div>
+                        </div>
+                        <div style="flex: 1;">
+                            <strong>🚛 อัตราค่าขนส่งต่อกิโลเมตร:</strong>
+                            <div style="background: white; padding: 10px; border-radius: 5px; margin-top: 8px;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 13px;">
+                                    <div><strong>1.5 ตัน (กระบะ):</strong></div><div>15 บาท/กม.</div>
+                                    <div><strong>6.3 ตัน (6ล้อ):</strong></div><div>28 บาท/กม.</div>
+                                    <div><strong>14 ตัน (10ล้อ):</strong></div><div>35 บาท/กม.</div>
+                                    <div><strong>27 ตัน (รถพ่วง):</strong></div><div>40 บาท/กม.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row" style="margin-top: 15px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <button type="button" class="btn" onclick="calculateShippingFee()" style="background: #f39c12; flex-shrink: 0;">
+                                🧮 คำนวณค่าขนส่งแนะนำ
+                            </button>
+                            <div id="shippingResult" class="shipping-result" style="display: none; margin: 0; flex: 1;">
+                                ค่าขนส่งแนะนำ: <span id="calculatedFee">0</span> บาท
+                                <button type="button" onclick="useCalculatedFee()" style="margin-left: 10px; padding: 5px 10px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    ใช้ค่านี้
+                                </button>
+                            </div>
+                        </div>
+                        <div id="calculationDebug" style="font-size: 12px; color: #666; margin-top: 10px; display: none;">
+                            <strong>การคำนวณ:</strong> <span id="debugInfo"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>ประเภทลูกค้า *</label>
+                        <select id="customerType" required>
+                            <option value="">เลือกประเภทลูกค้า</option>
+                            <option value="ขายปลีก">ขายปลีก</option>
+                            <option value="ขายส่ง">ขายส่ง</option>
+                            <option value="ผู้รับเหมา">ผู้รับเหมา</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>เบอร์โทรลูกค้า</label>
+                        <input type="tel" id="customerPhone" placeholder="เบอร์ติดต่อลูกค้า">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>วันที่นัดลูกค้า *</label>
+                        <input type="date" id="appointmentDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>เวลานัดหมาย</label>
+                        <input type="time" id="appointmentTime" placeholder="เวลานัดหมายลูกค้า">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>หมายเหตุการกำหนดราคา</label>
+                    <textarea id="salesNotes" rows="2" placeholder="รายละเอียดเพิ่มเติม เช่น เหตุผลให้ส่วนลด, ข้อตกลงพิเศษ"></textarea>
+                    <div id="pricingNote" style="font-size: 12px; color: #7f8c8d; margin-top: 5px;"></div>
+                </div>
+                
+                <button class="btn success" onclick="saveSales()">💾 บันทึกและส่งต่อไปฝ่าย GR</button>
+            </div>
+
+            <!-- ฝ่าย GR -->
+            <div id="form2" class="form-step hidden">
+                <h2>🚛 ขั้นตอนที่ 2: ฝ่าย GR (จัดส่ง)</h2>
+                <p>อนุมัติการจัดส่งและจัดเส้นทาง</p>
+                
+                <div id="currentOrderInfo" class="summary-item" style="margin-bottom: 25px;">
+                    <h4>📋 ข้อมูลรายการจากฝ่ายขาย</h4>
+                    <div id="orderDetails">ยังไม่มีข้อมูลรายการ</div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>คนขับที่มอบหมาย *</label>
+                        <select id="assignedDriver" required>
+                            <option value="">เลือกคนขับ</option>
+                            <option value="พี่หลวย">พี่หลวย</option>
+                            <option value="พี่น้อย">พี่น้อย</option>
+                            <option value="สายชล">สายชล</option>
+                            <option value="แป๋ง">แป๋ง</option>
+                            <option value="ต้นน้ำ">ต้นน้ำ</option>
+                            <option value="พี่ดอน">พี่ดอน</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>เลขทะเบียนรถ *</label>
+                        <select id="vehicleNumber" required>
+                            <option value="">เลือกรถ</option>
+                            <option value="80-1684">80-1684</option>
+                            <option value="81-3452">81-3452</option>
+                            <option value="81-3050">81-3050</option>
+                            <option value="81-3051">81-3051</option>
+                            <option value="81-3052">81-3052</option>
+                            <option value="81-3053+54">81-3053+54</option>
+                            <option value="6767">6767</option>
+                            <option value="2455">2455</option>
+                            <option value="8094">8094</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>🔄 รวมบิลเส้นทางเดียวกัน</label>
+                        <select id="routeGroup" onchange="updateRouteInfo()">
+                            <option value="">เลือกหรือสร้างกรุ๊ปใหม่</option>
+                            <option value="new">+ สร้างกรุ๊ปใหม่</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>สถานะการอนุมัติ *</label>
+                        <select id="approvalStatus" required>
+                            <option value="">เลือกสถานะ</option>
+                            <option value="อนุมัติตามเงื่อนไข">อนุมัติตามเงื่อนไข</option>
+                            <option value="อนุมัติพิเศษ">อนุมัติพิเศษ (ส่งฟรีแม้ไม่ผ่านเงื่อนไข)</option>
+                            <option value="รอการตรวจสอบ">รอการตรวจสอบเพิ่มเติม</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="routeGroupInfo" class="summary-item" style="display: none;">
+                    <h4>📦 รายการในกรุ๊ปเส้นทางเดียวกัน</h4>
+                    <div id="routeGroupDetails"></div>
+                    <button type="button" class="btn" onclick="addToRouteGroup()" style="margin-top: 10px;">
+                        ➕ เพิ่มเข้ากรุ๊ป
+                    </button>
+                </div>
+                
+                <div class="form-group">
+                    <label>หมายเหตุจากฝ่าย GR</label>
+                    <textarea id="grNotes" rows="2" placeholder="เหตุผลการอนุมัติพิเศษ, ข้อสังเกต"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>หมายเหตุจากฝ่าย GR</label>
+                    <textarea id="grNotes" rows="2" placeholder="เหตุผลการอนุมัติพิเศษ, ข้อสังเกต"></textarea>
+                </div>
+                
+                <button class="btn success" onclick="saveGR()">✅ อนุมัติและส่งต่อให้คนขับรถ</button>
+            </div>
+
+            <!-- คนขับรถ -->
+            <div id="form3" class="form-step hidden">
+                <h2>📱 ขั้นตอนที่ 3: คนขับรถ</h2>
+                <p>บันทึกข้อมูลการเดินทางและส่งของ</p>
+                
+                <div id="driverOrderInfo" class="summary-item" style="margin-bottom: 25px;">
+                    <h4>📋 รายละเอียดการส่งของ</h4>
+                    <div id="driverOrderDetails">ยังไม่มีข้อมูลรายการ</div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>วันที่ส่งของ (จริง) *</label>
+                        <input type="date" id="actualDeliveryDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>เวลาออกส่งของ *</label>
+                        <input type="time" id="departureTime" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>เลขไมล์ก่อนออก *</label>
+                        <input type="number" id="kmStart" placeholder="เลขไมล์เริ่มต้น" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>เลขไมล์หลังกลับ</label>
+                        <input type="number" id="kmEnd" placeholder="เลขไมล์หลังกลับ" min="0">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>ระยะทางที่วัดได้ (กม.) *</label>
+                        <input type="number" step="0.1" id="actualDistance" placeholder="จาก GPS/Google Maps" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>เวลากลับถึงร้าน</label>
+                        <input type="time" id="returnTime">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>ผู้ช่วยคนขับรถ</label>
+                        <input type="text" id="driverAssistant" placeholder="ชื่อผู้ช่วยคนขับ">
+                    </div>
+                    <div class="form-group">
+                        <label>ผู้ตรวจเช็คสินค้า *</label>
+                        <select id="productChecker" required>
+                            <option value="">เลือกผู้ตรวจเช็ค</option>
+                            <option value="พี่นง">พี่นง</option>
+                            <option value="พี่วิ">พี่วิ</option>
+                            <option value="พี่รุ่ง">พี่รุ่ง</option>
+                            <option value="พี่แก้ว">พี่แก้ว</option>
+                            <option value="เนส">เนส</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>หมายเหตุจากคนขับ</label>
+                    <textarea id="driverNotes" rows="3" placeholder="เช่น การจราจร, สภาพถนน, ปัญหาที่พบ"></textarea>
+                </div>
+                
+                <button class="btn success" onclick="saveDriver()">🚚 บันทึกและส่งต่อไปฝ่ายบัญชี</button>
+            </div>
+
+            <!-- ฝ่ายบัญชี -->
+            <div id="form4" class="form-step hidden">
+                <h2>💰 ขั้นตอนที่ 4: ฝ่ายบัญชี</h2>
+                <p>ยืนยันระยะทางจริงและคำนวณต้นทุน</p>
+                
+                <div id="accountingOrderInfo" class="summary-item" style="margin-bottom: 25px;">
+                    <h4>📋 ข้อมูลสำหรับตรวจสอบ</h4>
+                    <div id="accountingOrderDetails">ยังไม่มีข้อมูลรายการ</div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>🎯 ยืนยันระยะทางจริง (กม.) *</label>
+                        <input type="number" id="confirmedDistance" placeholder="จากข้อมูลคนขับรถ" min="0" step="0.1" required onchange="recalculateShipping()">
+                    </div>
+                    <div class="form-group">
+                        <label>ค่าขนส่งสุดท้าย (บาท)</label>
+                        <input type="number" id="finalShippingFee" placeholder="คำนวณจากระยะทางจริง" readonly>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>การตรวจสอบบิล *</label>
+                        <select id="billVerification" required>
+                            <option value="">เลือกสถานะการตรวจสอบ</option>
+                            <option value="ถูกต้อง">ข้อมูลครบถ้วนถูกต้อง</option>
+                            <option value="ผิดพลาด">พบข้อผิดพลาด</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>ต้นทุนน้ำมัน (บาท)</label>
+                        <input type="number" step="0.01" id="fuelCost" placeholder="คำนวณจากระยะทางจริง" min="0" onchange="calculateProfit()">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>รายได้จากค่าขนส่ง (บาท)</label>
+                        <input type="number" step="0.01" id="shippingRevenue" placeholder="รายได้ที่เก็บได้" min="0" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>กำไร/ขาดทุน (บาท)</label>
+                        <input type="number" step="0.01" id="profitLoss" placeholder="รายได้ - ต้นทุน" readonly>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>หมายเหตุจากฝ่ายบัญชี</label>
+                    <textarea id="accountingNotes" rows="3" placeholder="ข้อสังเกต, ข้อเสนอแนะ, ปัญหาที่พบ"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>สถานะสุดท้าย *</label>
+                    <select id="finalStatus" required>
+                        <option value="">เลือกสถานะ</option>
+                        <option value="ผ่านการตรวจสอบ">ผ่านการตรวจสอบแล้ว</option>
+                        <option value="ต้องแก้ไข">ต้องส่งกลับแก้ไข</option>
+                    </select>
+                </div>
+                
+                <button class="btn success" onclick="saveAccounting()">✅ บันทึกและเสร็จสิ้น</button>
+            </div>
+
+            <!-- สรุปข้อมูล -->
+            <div id="form5" class="form-step hidden">
+                <h2>📊 สรุปข้อมูลการขนส่ง</h2>
+                <p>ภาพรวมข้อมูลทั้งหมดและสรุปรายวัน</p>
+                
+                <div id="summaryContent" class="summary">
+                    <p>ข้อมูลสรุปจะแสดงเมื่อมีการบันทึกข้อมูล</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ตัวแปรควบคุมระบบ
+        let currentStep = 1;
+        let allData = [];
+        let currentOrderData = {};
+        let routeGroups = []; // เก็บข้อมูลกรุ๊ปเส้นทาง
+        
+        // เริ่มต้นระบบ
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStatus();
+            updateDataCount();
+            loadTodayDate();
+            updateRouteGroupOptions();
+            console.log('ระบบเริ่มต้นเรียบร้อย');
+        });
+
+        // โหลดวันที่วันนี้
+        function loadTodayDate() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            const appointmentDateEl = document.getElementById('appointmentDate');
+            if (appointmentDateEl) {
+                appointmentDateEl.value = today;
+            }
+            
+            const actualDeliveryDateEl = document.getElementById('actualDeliveryDate');
+            if (actualDeliveryDateEl) {
+                actualDeliveryDateEl.value = today;
+            }
+        }
+
+        // คำนวณค่าขนส่งแนะนำตามอัตราต่อกิโลเมตร
+        function calculateShippingFee() {
+            console.log('กำลังคำนวณค่าขนส่ง...');
+            
+            const orderValue = parseFloat(document.getElementById('orderValue').value) || 0;
+            const productType = document.getElementById('productType').value;
+            const estimatedDistance = parseFloat(document.getElementById('estimatedDistance').value) || 0;
+            const vehicleType = document.getElementById('vehicleType').value;
+            
+            console.log('ข้อมูลที่ได้รับ:', { orderValue, productType, estimatedDistance, vehicleType });
+            
+            const resultDiv = document.getElementById('shippingResult');
+            const feeSpan = document.getElementById('calculatedFee');
+            const debugDiv = document.getElementById('calculationDebug');
+            const debugInfo = document.getElementById('debugInfo');
+            
+            // ตรวจสอบข้อมูลที่จำเป็น
+            const missingFields = [];
+            if (!orderValue) missingFields.push('มูลค่าการสั่งซื้อ');
+            if (!productType) missingFields.push('ประเภทสินค้า');
+            if (!estimatedDistance) missingFields.push('ระยะทาง');
+            if (!vehicleType) missingFields.push('ประเภทรถ');
+            
+            if (missingFields.length > 0) {
+                showMessage('error', `❌ กรุณากรอกข้อมูลให้ครบ: ${missingFields.join(', ')}`);
+                resultDiv.style.display = 'none';
+                debugDiv.style.display = 'none';
+                return;
+            }
+            
+            let suggestedFee = 0;
+            let isFree = false;
+            let calculation = '';
+            
+            // ตรวจสอบเงื่อนไขส่งฟรี
+            const isGeneralProduct = !['เหล็ก', 'ปูน', 'อิฐมวลเบา'].includes(productType);
+            const isHighValue = orderValue >= 3000;
+            const isShortDistance = estimatedDistance <= 15;
+            
+            // ตารางอัตราค่าขนส่งต่อกิโลเมตร (ตามที่คุณระบุ)
+            const rateTable = {
+                '1.5ตัน': 15,   // 15 บาท/กม.
+                '6.3ตัน': 28,   // 28 บาท/กม.
+                '14ตัน': 35,    // 35 บาท/กม.
+                '27ตัน': 40     // 40 บาท/กม.
+            };
+            
+            const ratePerKm = rateTable[vehicleType] || 15;
+            
+            if (isGeneralProduct && isHighValue && isShortDistance) {
+                // ส่งฟรี - ผ่านเงื่อนไขทั้งหมด
+                suggestedFee = 0;
+                isFree = true;
+                calculation = `ผ่านเงื่อนไขส่งฟรี: วัสดุทั่วไป + ≥3,000บาท + ≤15กม.`;
+            } else if (isGeneralProduct && isHighValue && !isShortDistance) {
+                // ส่งฟรีแต่เกิน 15 กม. คิดค่าขนส่งเฉพาะส่วนเกิน
+                const extraDistance = estimatedDistance - 15;
+                suggestedFee = Math.ceil(extraDistance) * ratePerKm;
+                calculation = `เข้าเกณฑ์ส่งฟรี แต่เกิน 15กม. → ส่วนเกิน ${extraDistance}กม. × ${ratePerKm}บาท/กม. = ${suggestedFee}บาท`;
+            } else {
+                // ไม่เข้าเกณฑ์ส่งฟรี คิดค่าขนส่งเต็มระยะทาง
+                suggestedFee = Math.ceil(estimatedDistance) * ratePerKm;
+                const reasons = [];
+                if (!isGeneralProduct) reasons.push('เหล็ก/ปูน/อิฐมวลเบา');
+                if (!isHighValue) reasons.push('มูลค่า < 3,000บาท');
+                calculation = `ไม่ผ่านเงื่อนไขส่งฟรี (${reasons.join(', ')}) → ${estimatedDistance}กม. × ${ratePerKm}บาท/กม. = ${suggestedFee}บาท`;
+            }
+            
+            console.log('ผลการคำนวณ:', { suggestedFee, calculation });
+            
+            feeSpan.textContent = suggestedFee.toLocaleString();
+            debugInfo.textContent = calculation;
+            
+            resultDiv.className = isFree ? 'shipping-result' : 'shipping-result paid';
+            resultDiv.style.display = 'block';
+            debugDiv.style.display = 'block';
+            
+            showMessage('success', `✅ คำนวณเรียบร้อย: ${suggestedFee.toLocaleString()} บาท`);
+        }
+
+        // ใช้ค่าขนส่งที่คำนวณแนะนำ
+        function useCalculatedFee() {
+            const suggestedFee = document.getElementById('calculatedFee').textContent;
+            document.getElementById('quotedShippingFee').value = suggestedFee.replace(/,/g, '');
+            
+            // ตั้งค่าเหตุผลอัตโนมัติ
+            const fee = parseFloat(suggestedFee.replace(/,/g, ''));
+            const pricingReasonEl = document.getElementById('pricingReason');
+            
+            if (fee === 0) {
+                pricingReasonEl.value = 'ตามเงื่อนไขส่งฟรี';
+            } else {
+                pricingReasonEl.value = 'ตามอัตรามาตรฐาน';
+            }
+            
+            updatePricingNote();
+            showMessage('success', '✅ ใช้ค่าขนส่งแนะนำเรียบร้อย');
+        }
+
+        // อัพเดตหมายเหตุเหตุผลการกำหนดราคา
+        function updatePricingNote() {
+            const reason = document.getElementById('pricingReason').value;
+            const noteEl = document.getElementById('pricingNote');
+            
+            if (noteEl) {
+                switch(reason) {
+                    case 'ตามเงื่อนไขส่งฟรี':
+                        noteEl.textContent = 'ลูกค้าผ่านเงื่อนไขส่งฟรี: มูลค่า ≥3,000 บาท + วัสดุทั่วไป + ระยะทาง ≤15 กม.';
+                        break;
+                    case 'ตามอัตรามาตรฐาน':
+                        noteEl.textContent = 'คิดค่าขนส่งตามอัตรามาตรฐานต่อกิโลเมตรตามประเภทรถ';
+                        break;
+                    case 'ลูกค้าพิเศษ':
+                        noteEl.textContent = 'ให้ส่วนลดพิเศษสำหรับลูกค้า VIP หรือลูกค้าประจำ';
+                        break;
+                    case 'โปรโมชั่น':
+                        noteEl.textContent = 'ราคาโปรโมชั่นหรือแคมเปญพิเศษ';
+                        break;
+                    case 'เจรจาตกลง':
+                        noteEl.textContent = 'ราคาที่เจรจาตกลงกับลูกค้า';
+                        break;
+                    default:
+                        noteEl.textContent = '';
+                }
+            }
+        }
+
+        // คำนวณค่าขนส่งใหม่ในขั้นตอนฝ่ายบัญชี (หลังได้ข้อมูลจริงจากคนขับรถ)
+        function recalculateShipping() {
+            if (!currentOrderData.sales) return;
+            
+            const confirmedDistance = parseFloat(document.getElementById('confirmedDistance').value) || 0;
+            const orderValue = currentOrderData.sales.orderValue;
+            const productType = currentOrderData.sales.productType;
+            const vehicleType = currentOrderData.sales.vehicleType;
+            
+            let shippingFee = 0;
+            
+            // ตรวจสอบเงื่อนไขส่งฟรีด้วยระยะทางจริง
+            const isGeneralProduct = !['เหล็ก', 'ปูน', 'อิฐมวลเบา'].includes(productType);
+            const isHighValue = orderValue >= 3000;
+            const isShortDistance = confirmedDistance <= 15;
+            
+            // ตารางอัตราค่าขนส่งต่อกิโลเมตร
+            const rateTable = {
+                '1.5ตัน': 15,   // 15 บาท/กม.
+                '6.3ตัน': 28,   // 28 บาท/กม.
+                '14ตัน': 35,    // 35 บาท/กม.
+                '27ตัน': 40     // 40 บาท/กม.
+            };
+            
+            const ratePerKm = rateTable[vehicleType] || 15;
+            
+            if (isGeneralProduct && isHighValue && isShortDistance) {
+                // ส่งฟรี
+                shippingFee = 0;
+            } else if (isGeneralProduct && isHighValue && !isShortDistance) {
+                // ส่งฟรีแต่เกิน 15 กม. คิดค่าขนส่งเฉพาะส่วนเกิน
+                const extraDistance = confirmedDistance - 15;
+                shippingFee = Math.ceil(extraDistance) * ratePerKm;
+            } else {
+                // ไม่เข้าเกณฑ์ส่งฟรี คิดค่าขนส่งเต็มระยะทาง
+                shippingFee = Math.ceil(confirmedDistance) * ratePerKm;
+            }
+            
+            document.getElementById('finalShippingFee').value = shippingFee;
+        }
+
+        // คำนวณกำไร/ขาดทุน
+        function calculateProfit() {
+            const fuelCost = parseFloat(document.getElementById('fuelCost').value) || 0;
+            const shippingRevenue = parseFloat(document.getElementById('shippingRevenue').value) || 0;
+            
+            const profit = shippingRevenue - fuelCost;
+            document.getElementById('profitLoss').value = profit.toFixed(2);
+        }
+
+        // อัพเดตสถานะ Workflow
+        function updateStatus() {
+            const stepNames = ['', 'ฝ่ายขาย', 'ฝ่าย GR', 'คนขับรถ', 'ฝ่ายบัญชี', 'สรุปข้อมูล'];
+            
+            for (let i = 1; i <= 5; i++) {
+                const step = document.getElementById('step' + i);
+                if (step) {
+                    if (i < currentStep) {
+                        step.className = 'step completed';
+                    } else if (i === currentStep) {
+                        step.className = 'step current';
+                    } else {
+                        step.className = 'step pending';
+                    }
+                }
+            }
+
+            const currentInfoEl = document.getElementById('currentInfo');
+            if (currentInfoEl) {
+                currentInfoEl.textContent = 'ขั้นตอนปัจจุบัน: ' + stepNames[currentStep];
+            }
+
+            // แสดง/ซ่อน form
+            for (let i = 1; i <= 5; i++) {
+                const form = document.getElementById('form' + i);
+                if (form) {
+                    if (i === currentStep) {
+                        form.classList.remove('hidden');
+                    } else {
+                        form.classList.add('hidden');
+                    }
+                }
+            }
+        }
+
+        // อัพเดตจำนวนข้อมูล
+        function updateDataCount() {
+            const dataCountEl = document.getElementById('dataCount');
+            if (dataCountEl) {
+                dataCountEl.textContent = `รายการ: ${allData.length}`;
+            }
+        }
+
+        // ไปขั้นตอนถัดไป
+        function nextStep() {
+            if (currentStep < 5) {
+                currentStep++;
+                updateStatus();
+                hideMessages();
+            }
+        }
+
+        // ย้อนกลับ
+        function previousStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateStatus();
+                hideMessages();
+            }
+        }
+
+        // เพิ่มรายการใหม่
+        function addNewOrder() {
+            currentStep = 1;
+            currentOrderData = {};
+            clearAllForms();
+            updateStatus();
+            hideMessages();
+            showMessage('info', '🆕 เริ่มต้นรายการใหม่');
+        }
+
+        // รีเซ็ต
+        function resetAll() {
+            if (confirm('คุณต้องการลบข้อมูลทั้งหมดหรือไม่?\n⚠️ การกระทำนี้ไม่สามารถย้อนกลับได้')) {
+                currentStep = 1;
+                allData = [];
+                currentOrderData = {};
+                updateStatus();
+                updateDataCount();
+                clearAllForms();
+                hideMessages();
+                showMessage('success', '🔄 รีเซ็ตข้อมูลเรียบร้อย');
+            }
+        }
+
+                    // ล้างข้อมูล form ทั้งหมด
+        function clearAllForms() {
+            const inputs = document.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if (input.type === 'date') {
+                    if (input.id === 'appointmentDate' || input.id === 'actualDeliveryDate') {
+                        input.value = new Date().toISOString().split('T')[0];
+                    }
+                } else {
+                    input.value = '';
+                }
+            });
+            
+            const shippingResult = document.getElementById('shippingResult');
+            if (shippingResult) shippingResult.style.display = 'none';
+            
+            const calculationDebug = document.getElementById('calculationDebug');
+            if (calculationDebug) calculationDebug.style.display = 'none';
+            
+            const routeGroupInfo = document.getElementById('routeGroupInfo');
+            if (routeGroupInfo) routeGroupInfo.style.display = 'none';
+            
+            updateRouteGroupOptions();
+        }
+
+        // แสดงข้อความ
+        function showMessage(type, text) {
+            hideMessages();
+            const messageEl = document.getElementById(type + 'Message');
+            if (messageEl) {
+                messageEl.textContent = text;
+                messageEl.style.display = 'block';
+                setTimeout(hideMessages, 4000);
+            }
+        }
+
+        function hideMessages() {
+            const messages = ['successMessage', 'errorMessage', 'infoMessage'];
+            messages.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+        }
+
+        // ตรวจสอบความถูกต้องของข้อมูล
+        function validateForm(formType) {
+            const requiredFields = {
+                sales: ['billNumber', 'customerName', 'deliveryAddress', 'orderValue', 'productType', 'estimatedDistance', 'vehicleType', 'quotedShippingFee', 'customerType', 'appointmentDate'],
+                gr: ['assignedDriver', 'approvalStatus', 'vehicleNumber'],
+                driver: ['actualDeliveryDate', 'departureTime', 'kmStart', 'actualDistance', 'productChecker'],
+                accounting: ['confirmedDistance', 'billVerification', 'finalStatus']
+            };
+
+            const fields = requiredFields[formType];
+            if (!fields) return true;
+
+            const missingFields = [];
+
+            fields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field && (!field.value || !field.value.trim())) {
+                    const label = field.closest('.form-group').querySelector('label');
+                    const fieldName = label ? label.textContent.replace(' *', '') : fieldId;
+                    missingFields.push(fieldName);
+                }
+            });
+
+            if (missingFields.length > 0) {
+                showMessage('error', `❌ กรุณากรอกข้อมูลให้ครบถ้วน: ${missingFields.join(', ')}`);
+                return false;
+            }
+
+            return true;
+        }
+
+        // บันทึกข้อมูลฝ่ายขาย
+        function saveSales() {
+            if (!validateForm('sales')) return;
+
+            currentOrderData = {
+                sales: {
+                    billNumber: document.getElementById('billNumber').value.trim(),
+                    customerName: document.getElementById('customerName').value.trim(),
+                    deliveryAddress: document.getElementById('deliveryAddress').value.trim(),
+                    orderValue: parseFloat(document.getElementById('orderValue').value),
+                    productType: document.getElementById('productType').value,
+                    estimatedDistance: parseFloat(document.getElementById('estimatedDistance').value),
+                    vehicleType: document.getElementById('vehicleType').value,
+                    quotedShippingFee: parseFloat(document.getElementById('quotedShippingFee').value),
+                    pricingReason: document.getElementById('pricingReason').value,
+                    customerType: document.getElementById('customerType').value,
+                    customerPhone: document.getElementById('customerPhone').value.trim(),
+                    appointmentDate: document.getElementById('appointmentDate').value,
+                    appointmentTime: document.getElementById('appointmentTime').value,
+                    salesNotes: document.getElementById('salesNotes').value.trim(),
+                    timestamp: new Date().toISOString()
+                }
+            };
+
+            // ตรวจสอบเลขบิลซ้ำ
+            const existingBill = allData.find(data => 
+                data.sales && data.sales.billNumber === currentOrderData.sales.billNumber
+            );
+            
+            if (existingBill) {
+                showMessage('error', '❌ เลขที่บิลนี้มีอยู่ในระบบแล้ว');
+                return;
+            }
+
+            showMessage('success', '✅ บันทึกข้อมูลฝ่ายขายเรียบร้อย กำลังส่งต่อไปฝ่าย GR...');
+            
+            setTimeout(() => {
+                updateOrderInfo();
+                nextStep();
+            }, 1500);
+        }
+
+        // บันทึกข้อมูลฝ่าย GR
+        function saveGR() {
+            if (!validateForm('gr')) return;
+
+            currentOrderData.gr = {
+                assignedDriver: document.getElementById('assignedDriver').value,
+                vehicleNumber: document.getElementById('vehicleNumber').value,
+                approvalStatus: document.getElementById('approvalStatus').value,
+                grNotes: document.getElementById('grNotes').value.trim(),
+                timestamp: new Date().toISOString()
+            };
+
+            showMessage('success', '✅ อนุมัติเรียบร้อย กำลังส่งต่อให้คนขับรถ...');
+            
+            setTimeout(() => {
+                updateOrderInfo();
+                nextStep();
+            }, 1500);
+        }
+
+        // บันทึกข้อมูลคนขับรถ
+        function saveDriver() {
+            if (!validateForm('driver')) return;
+
+            currentOrderData.driver = {
+                actualDeliveryDate: document.getElementById('actualDeliveryDate').value,
+                departureTime: document.getElementById('departureTime').value,
+                kmStart: parseFloat(document.getElementById('kmStart').value),
+                kmEnd: parseFloat(document.getElementById('kmEnd').value) || null,
+                actualDistance: parseFloat(document.getElementById('actualDistance').value),
+                returnTime: document.getElementById('returnTime').value,
+                driverAssistant: document.getElementById('driverAssistant').value.trim(),
+                productChecker: document.getElementById('productChecker').value,
+                driverNotes: document.getElementById('driverNotes').value.trim(),
+                timestamp: new Date().toISOString()
+            };
+
+            showMessage('success', '✅ บันทึกข้อมูลคนขับเรียบร้อย กำลังส่งต่อไปฝ่ายบัญชี...');
+            
+            setTimeout(() => {
+                updateOrderInfo();
+                // เตรียมข้อมูลสำหรับฝ่ายบัญชี - ใช้ระยะทางจริงจากคนขับ
+                if (currentOrderData.driver && currentOrderData.driver.actualDistance) {
+                    document.getElementById('confirmedDistance').value = currentOrderData.driver.actualDistance;
+                    recalculateShipping();
+                }
+                document.getElementById('shippingRevenue').value = currentOrderData.sales.quotedShippingFee;
+                calculateProfit();
+                nextStep();
+            }, 1500);
+        }
+
+        // บันทึกข้อมูลฝ่ายบัญชี
+        function saveAccounting() {
+            if (!validateForm('accounting')) return;
+
+            currentOrderData.accounting = {
+                confirmedDistance: parseFloat(document.getElementById('confirmedDistance').value),
+                finalShippingFee: parseFloat(document.getElementById('finalShippingFee').value) || 0,
+                billVerification: document.getElementById('billVerification').value,
+                fuelCost: parseFloat(document.getElementById('fuelCost').value) || 0,
+                shippingRevenue: parseFloat(document.getElementById('shippingRevenue').value) || 0,
+                profitLoss: parseFloat(document.getElementById('profitLoss').value) || 0,
+                accountingNotes: document.getElementById('accountingNotes').value.trim(),
+                finalStatus: document.getElementById('finalStatus').value,
+                timestamp: new Date().toISOString()
+            };
+
+            // เพิ่มข้อมูลเข้าในระบบ
+            currentOrderData.id = Date.now();
+            currentOrderData.completedAt = new Date().toISOString();
+            allData.push(currentOrderData);
+
+            showMessage('success', '🎉 ตรวจสอบเรียบร้อย ขั้นตอนทั้งหมดเสร็จสิ้น!');
+            updateDataCount();
+            
+            setTimeout(() => {
+                updateSummary();
+                nextStep();
+            }, 2000);
+        }
+
+        // อัพเดตข้อมูลรายการปัจจุบัน
+        function updateOrderInfo() {
+            if (!currentOrderData || !currentOrderData.sales) return;
+            
+            let orderDetails = `
+                <p><strong>เลขบิล:</strong> ${currentOrderData.sales.billNumber}</p>
+                <p><strong>ลูกค้า:</strong> ${currentOrderData.sales.customerName}</p>
+                <p><strong>มูลค่า:</strong> ${currentOrderData.sales.orderValue.toLocaleString()} บาท</p>
+                <p><strong>ประเภทสินค้า:</strong> ${currentOrderData.sales.productType}</p>
+                <p><strong>ระยะทางประมาณ:</strong> ${currentOrderData.sales.estimatedDistance} กม.</p>
+                <p><strong>ประเภทรถ:</strong> ${currentOrderData.sales.vehicleType}</p>
+                <p><strong>ค่าขนส่งที่เสนอ:</strong> ${currentOrderData.sales.quotedShippingFee} บาท</p>
+                <p><strong>เหตุผลการกำหนดราคา:</strong> ${currentOrderData.sales.pricingReason || 'ไม่ระบุ'}</p>
+                <p><strong>ที่อยู่:</strong> ${currentOrderData.sales.deliveryAddress}</p>
+                <p><strong>วันที่นัด:</strong> ${currentOrderData.sales.appointmentDate} ${currentOrderData.sales.appointmentTime || ''}</p>
+            `;
+            
+            // อัพเดต element ที่มีอยู่
+            const elements = ['orderDetails', 'driverOrderDetails', 'accountingOrderDetails'];
+            elements.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.innerHTML = orderDetails;
+                }
+            });
+
+            // เพิ่มข้อมูล GR สำหรับขั้นตอนถัดไป
+            if (currentOrderData.gr) {
+                const grDetails = `
+                    <p><strong>คนขับ:</strong> ${currentOrderData.gr.assignedDriver}</p>
+                    <p><strong>ทะเบียนรถ:</strong> ${currentOrderData.gr.vehicleNumber}</p>
+                    <p><strong>สถานะ:</strong> ${currentOrderData.gr.approvalStatus}</p>
+                `;
+                
+                const driverEl = document.getElementById('driverOrderDetails');
+                const accountingEl = document.getElementById('accountingOrderDetails');
+                
+                if (driverEl) driverEl.innerHTML += grDetails;
+                if (accountingEl) accountingEl.innerHTML += grDetails;
+            }
+
+            // เพิ่มข้อมูลคนขับสำหรับฝ่ายบัญชี
+            if (currentOrderData.driver) {
+                const driverDetails = `
+                    <p><strong>วันที่ส่งจริง:</strong> ${currentOrderData.driver.actualDeliveryDate}</p>
+                    <p><strong>ระยะทางจริง:</strong> ${currentOrderData.driver.actualDistance} กม.</p>
+                    <p><strong>ไมล์:</strong> ${currentOrderData.driver.kmStart} - ${currentOrderData.driver.kmEnd || 'ยังไม่กรอก'}</p>
+                    <p><strong>ผู้ตรวจเช็ค:</strong> ${currentOrderData.driver.productChecker}</p>
+                `;
+                
+                const accountingEl = document.getElementById('accountingOrderDetails');
+                if (accountingEl) accountingEl.innerHTML += driverDetails;
+            }
+        }
+
+        // สร้างสรุปข้อมูล
+        function updateSummary() {
+            const summaryEl = document.getElementById('summaryContent');
+            if (!summaryEl) return;
+
+            if (allData.length === 0) {
+                summaryEl.innerHTML = '<p>ยังไม่มีข้อมูลในระบบ</p>';
+                return;
+            }
+
+            const recentData = allData.slice(-5).reverse();
+            let summaryHTML = '<h3>📋 รายการล่าสุด 5 รายการ</h3>';
+
+            recentData.forEach((data, index) => {
+                const isFreeDelivery = data.accounting && data.accounting.finalShippingFee === 0;
+                const statusColor = isFreeDelivery ? '#27ae60' : '#f39c12';
+                
+                summaryHTML += `
+                    <div class="summary-item" style="border-left-color: ${statusColor};">
+                        <h4>📦 ${data.sales ? data.sales.billNumber : 'ไม่มีเลขบิล'} - ${data.sales ? data.sales.customerName : 'ไม่มีข้อมูล'}</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                            <div>
+                                <strong>ข้อมูลคำสั่ง:</strong><br>
+                                มูลค่า: ${data.sales ? data.sales.orderValue.toLocaleString() : '0'} บาท<br>
+                                ประเภท: ${data.sales ? data.sales.productType : 'ไม่ระบุ'}
+                            </div>
+                            <div>
+                                <strong>การจัดส่ง:</strong><br>
+                                ระยะทางจริง: ${data.accounting ? data.accounting.confirmedDistance : data.sales?.estimatedDistance || 0} กม.<br>
+                                ค่าส่งสุดท้าย: ${data.accounting ? data.accounting.finalShippingFee : '0'} บาท ${isFreeDelivery ? '(ฟรี)' : ''}
+                            </div>
+                            <div>
+                                <strong>สถานะ:</strong><br>
+                                ${data.accounting ? data.accounting.finalStatus : 'ยังไม่เสร็จสิ้น'}<br>
+                                คนขับ: ${data.gr ? data.gr.assignedDriver : 'ไม่ระบุ'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            summaryEl.innerHTML = summaryHTML;
+        }
+
+        // ฟังก์ชันจัดการกรุ๊ปเส้นทาง
+        function updateRouteGroupOptions() {
+            const routeGroupSelect = document.getElementById('routeGroup');
+            if (!routeGroupSelect) return;
+
+            // เคลียร์ตัวเลือกเดิม
+            routeGroupSelect.innerHTML = '';
+            
+            // เพิ่มตัวเลือกพื้นฐาน
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'เลือกหรือสร้างกรุ๊ปใหม่';
+            routeGroupSelect.appendChild(defaultOption);
+            
+            const newOption = document.createElement('option');
+            newOption.value = 'new';
+            newOption.textContent = '+ สร้างกรุ๊ปใหม่';
+            routeGroupSelect.appendChild(newOption);
+
+            // เพิ่มกรุ๊ปที่มีอยู่
+            if (routeGroups && routeGroups.length > 0) {
+                routeGroups.forEach((group, index) => {
+                    const option = document.createElement('option');
+                    option.value = 'group_' + index;
+                    option.textContent = 'กรุ๊ป ' + (index + 1) + ': ' + group.name + ' (' + group.bills.length + ' บิล)';
+                    routeGroupSelect.appendChild(option);
+                });
+            }
+        }
+
+        function updateRouteInfo() {
+            const routeGroupSelect = document.getElementById('routeGroup');
+            const routeGroupInfo = document.getElementById('routeGroupInfo');
+            const routeGroupDetails = document.getElementById('routeGroupDetails');
+            
+            if (!routeGroupSelect || !routeGroupInfo || !routeGroupDetails) return;
+            
+            const routeGroup = routeGroupSelect.value;
+
+            if (routeGroup && routeGroup !== 'new') {
+                const groupIndex = parseInt(routeGroup.replace('group_', ''));
+                const group = routeGroups[groupIndex];
+                
+                if (group) {
+                    let detailsHTML = '<h5>กรุ๊ป: ' + group.name + '</h5>';
+                    detailsHTML += '<p><strong>เส้นทาง:</strong> ' + group.route + '</p>';
+                    detailsHTML += '<p><strong>บิลในกรุ๊ป:</strong></p><ul>';
+                    
+                    group.bills.forEach(function(bill) {
+                        detailsHTML += '<li>' + bill.billNumber + ' - ' + bill.customerName + ' (' + bill.orderValue.toLocaleString() + ' บาท)</li>';
+                    });
+                    
+                    detailsHTML += '</ul>';
+                    routeGroupDetails.innerHTML = detailsHTML;
+                    routeGroupInfo.style.display = 'block';
+                }
+            } else if (routeGroup === 'new') {
+                routeGroupDetails.innerHTML = '<p>จะสร้างกรุ๊ปใหม่สำหรับเส้นทางนี้</p><p><strong>ชื่อกรุ๊ป:</strong> <input type="text" id="newGroupName" placeholder="เช่น หนองบัวลำภู-เมือง" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 250px;"></p>';
+                routeGroupInfo.style.display = 'block';
+            } else {
+                routeGroupInfo.style.display = 'none';
+            }
+        }
+
+        function addToRouteGroup() {
+            const routeGroupSelect = document.getElementById('routeGroup');
+            if (!routeGroupSelect) return;
+            
+            const routeGroup = routeGroupSelect.value;
+            
+            if (!currentOrderData.sales) {
+                showMessage('error', '❌ กรุณาบันทึกข้อมูลฝ่ายขายก่อน');
+                return;
+            }
+
+            if (routeGroup === 'new') {
+                // สร้างกรุ๊ปใหม่
+                const newGroupNameInput = document.getElementById('newGroupName');
+                if (!newGroupNameInput) {
+                    showMessage('error', '❌ ไม่พบช่องใส่ชื่อกรุ๊ป');
+                    return;
+                }
+                
+                const groupName = newGroupNameInput.value.trim();
+                if (!groupName) {
+                    showMessage('error', '❌ กรุณาใส่ชื่อกรุ๊ป');
+                    return;
+                }
+
+                const newGroup = {
+                    name: groupName,
+                    route: currentOrderData.sales.deliveryAddress,
+                    bills: [currentOrderData.sales],
+                    createdAt: new Date().toISOString()
+                };
+
+                routeGroups.push(newGroup);
+                currentOrderData.gr = currentOrderData.gr || {};
+                currentOrderData.gr.routeGroupIndex = routeGroups.length - 1;
+                
+            } else if (routeGroup.indexOf('group_') === 0) {
+                // เพิ่มเข้ากรุ๊ปที่มีอยู่
+                const groupIndex = parseInt(routeGroup.replace('group_', ''));
+                if (routeGroups[groupIndex]) {
+                    routeGroups[groupIndex].bills.push(currentOrderData.sales);
+                    currentOrderData.gr = currentOrderData.gr || {};
+                    currentOrderData.gr.routeGroupIndex = groupIndex;
+                }
+            }
+
+            updateRouteGroupOptions();
+            showMessage('success', '✅ เพิ่มเข้ากรุ๊ปเส้นทางเรียบร้อย');
+        }
+    </script>
+</body>
+</html>
